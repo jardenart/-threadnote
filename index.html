@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostFlow — 投稿型スケジューラー</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a25;
+    --surface3: #22223a;
+    --border: #2a2a40;
+    --accent: #7c6dfa;
+    --accent2: #fa6d9a;
+    --accent3: #6dfac2;
+    --accent4: #fac06d;
+    --text: #e8e8f0;
+    --text2: #9090b0;
+    --text3: #5a5a7a;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── LAYOUT ─── */
+  .app { display: flex; height: 100vh; }
+
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar-logo {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .sidebar-nav {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: none;
+    color: var(--text2);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .nav-btn:hover { background: var(--surface2); color: var(--text); }
+  .nav-btn.active { background: var(--accent)22; color: var(--accent); }
+  .nav-btn .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* 型リスト */
+  .types-section {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 10px;
+  }
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 0 8px;
+    margin-bottom: 8px;
+  }
+  .type-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .type-chip:hover { background: var(--surface2); }
+  .type-chip.selected { border-color: var(--border); background: var(--surface2); }
+  .type-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .type-chip-name {
+    flex: 1;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .type-chip-count {
+    font-size: 11px;
+    color: var(--text3);
+    background: var(--surface3);
+    padding: 2px 6px;
+    border-radius: 10px;
+  }
+
+  .add-type-btn {
+    margin: 8px 10px;
+    width: calc(100% - 20px);
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border);
+    background: none;
+    color: var(--text3);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .add-type-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ─── MAIN HEADER ─── */
+  .main-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .header-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .header-title span { color: var(--accent); }
+
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: #6859e8; }
+
+  /* ─── DATE STRIP ─── */
+  .date-strip {
+    display: flex;
+    gap: 6px;
+    padding: 16px 24px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    scrollbar-width: none;
+  }
+  .date-strip::-webkit-scrollbar { display: none; }
+  .date-cell {
+    flex-shrink: 0;
+    width: 54px;
+    padding: 10px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .date-cell:hover { border-color: var(--accent)66; }
+  .date-cell.today { border-color: var(--accent); background: var(--accent)15; }
+  .date-cell.selected { border-color: var(--accent); background: var(--accent)25; }
+  .date-cell .dow {
+    font-size: 10px;
+    color: var(--text3);
+    margin-bottom: 4px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+  .date-cell .day {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .date-cell.today .day { color: var(--accent); }
+  .date-cell .dot-row {
+    display: flex;
+    justify-content: center;
+    gap: 3px;
+    margin-top: 4px;
+    height: 5px;
+  }
+  .date-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+  /* ─── CONTENT AREA ─── */
+  .content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ─── 投稿カード ─── */
+  .post-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s;
+    animation: fadeUp 0.2s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .post-card:hover { border-color: var(--border); transform: translateY(-1px); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-type-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .card-order {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text3);
+    margin-left: auto;
+  }
+  .card-actions-mini {
+    display: flex;
+    gap: 4px;
+    margin-left: 8px;
+  }
+  .icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    color: var(--text3);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover { background: var(--surface2); color: var(--text); }
+
+  .card-body { padding: 14px 16px; }
+  .post-text {
+    font-size: 13.5px;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .post-text-empty {
+    color: var(--text3);
+    font-style: italic;
+    font-size: 13px;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .char-count { font-size: 11px; color: var(--text3); }
+  .footer-spacer { flex: 1; }
+  .btn-edit-post {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text2);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-edit-post:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-done {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent3)20;
+    color: var(--accent3);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-done:hover { background: var(--accent3)35; }
+  .btn-done.done { background: var(--accent3); color: #0a0a0f; }
+
+  .done-stamp {
+    position: absolute;
+    inset: 0;
+    background: var(--bg)cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    backdrop-filter: blur(2px);
+    font-size: 32px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  /* テキストエリア編集 */
+  .edit-textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--accent)66;
+    border-radius: 8px;
+    padding: 12px;
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.8;
+    resize: vertical;
+    min-height: 100px;
+    outline: none;
+  }
+  .edit-textarea:focus { border-color: var(--accent); }
+
+  /* ─── EMPTY STATE ─── */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text3);
+    gap: 12px;
+    padding: 40px;
+    text-align: center;
+  }
+  .empty-icon { font-size: 48px; opacity: 0.4; }
+  .empty-title { font-size: 16px; color: var(--text2); font-weight: 500; }
+  .empty-sub { font-size: 13px; line-height: 1.6; }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: #00000088;
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 480px;
+    padding: 28px;
+    transform: scale(0.95);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: scale(1); }
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text2);
+    margin-bottom: 6px;
+    letter-spacing: 0.3px;
+  }
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-textarea {
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.7;
+  }
+
+  .color-picker-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .color-swatch {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .color-swatch:hover { transform: scale(1.1); }
+  .color-swatch.selected { border-color: white; }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+
+  /* ─── STATS BAR ─── */
+  .stats-bar {
+    display: flex;
+    gap: 4px;
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .stat-item {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .stat-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* ─── ROUTINE MODAL ─── */
+  .routine-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+  .routine-day-label {
+    text-align: center;
+    font-size: 10px;
+    color: var(--text3);
+    padding: 4px 0;
+    font-weight: 600;
+  }
+  .routine-slot {
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    border: 1px dashed var(--border);
+    color: var(--text3);
+    transition: all 0.15s;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 2px;
+  }
+  .routine-slot.filled { border-style: solid; }
+  .routine-slot:hover { border-color: var(--accent)88; }
+
+  .week-label {
+    font-size: 11px;
+    color: var(--text3);
+    writing-mode: horizontal-tb;
+    text-align: center;
+    padding: 6px 0 2px;
+    grid-column: 1/-1;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* VIEW TABS */
+  .view-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .view-tab {
+    padding: 5px 14px;
+    border-radius: 6px;
+    border: none;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    background: none;
+    color: var(--text3);
+    transition: all 0.15s;
+  }
+  .view-tab.active { background: var(--accent); color: white; }
+
+  /* Type indicator line */
+  .post-card { border-left: 3px solid transparent; }
+
+  @media (max-width: 600px) {
+    .sidebar { display: none; }
+    .stats-bar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ─── SIDEBAR ─── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text">PostFlow</div>
+      <div class="logo-sub">投稿型スケジューラー</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" onclick="setView('schedule')">
+        <span class="icon">📅</span> スケジュール
+      </button>
+      <button class="nav-btn" onclick="setView('routine')">
+        <span class="icon">🔄</span> ルーティン設定
+      </button>
+    </nav>
+
+    <div class="section-label" style="padding: 12px 18px 4px;">投稿の型</div>
+    <div class="types-section" id="typesList"></div>
+    <button class="add-type-btn" onclick="openAddTypeModal()">＋ 型を追加</button>
+  </aside>
+
+  <!-- ─── MAIN ─── -->
+  <main class="main">
+    <header class="main-header">
+      <div>
+        <div class="header-title" id="headerTitle">今日の投稿 <span id="headerDate"></span></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;" id="headerSub"></div>
+      </div>
+      <div class="header-actions">
+        <div class="view-tabs">
+          <button class="view-tab active" onclick="setDateRange('day', this)">日</button>
+          <button class="view-tab" onclick="setDateRange('week', this)">週</button>
+        </div>
+        <button class="btn btn-ghost" onclick="openRoutineModal()">🔄 ルーティン</button>
+        <button class="btn btn-primary" onclick="openAddPostModal()">＋ 投稿を追加</button>
+      </div>
+    </header>
+
+    <!-- 日付ストリップ -->
+    <div class="date-strip" id="dateStrip"></div>
+
+    <!-- コンテンツ -->
+    <div class="content-area" id="contentArea"></div>
+
+    <!-- スタッツバー -->
+    <div class="stats-bar" id="statsBar"></div>
+  </main>
+</div>
+
+<!-- ─── 型追加モーダル ─── -->
+<div class="modal-overlay" id="typeModal">
+  <div class="modal">
+    <div class="modal-title">📝 型を追加</div>
+    <div class="form-group">
+      <label class="form-label">型の名前</label>
+      <input class="form-input" id="typeName" placeholder="例：共感系、実績系、CTA系…" maxlength="20">
+    </div>
+    <div class="form-group">
+      <label class="form-label">テンプレート文（省略可）</label>
+      <textarea class="form-input form-textarea" id="typeTemplate" placeholder="例：&#10;✅ [気づき]&#10;&#10;これって〇〇な方あるあるじゃないですか？&#10;&#10;実は私も〜"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">カラー</label>
+      <div class="color-picker-row" id="colorPicker"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('typeModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveType()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 投稿追加モーダル ─── -->
+<div class="modal-overlay" id="postModal">
+  <div class="modal">
+    <div class="modal-title">✍️ 投稿を追加</div>
+    <div class="form-group">
+      <label class="form-label">日付</label>
+      <input class="form-input" id="postDate" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">投稿の型</label>
+      <select class="form-input" id="postType"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">投稿文</label>
+      <textarea class="form-input form-textarea" id="postText" placeholder="投稿文を入力…" style="min-height:120px;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('postModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="savePost()">追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── ルーティン設定モーダル ─── -->
+<div class="modal-overlay" id="routineModal" style="align-items:flex-start;padding-top:40px;">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-title">🔄 ルーティン設定</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:16px;">曜日ごとに投稿する「型」を登録。毎週自動的にスケジュールに反映されます。</div>
+    <div id="routineGrid"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('routineModal')">閉じる</button>
+      <button class="btn btn-primary" onclick="applyRoutine()">ルーティンを適用</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 型選択ポップアップ（ルーティン用）─── -->
+<div class="modal-overlay" id="slotModal">
+  <div class="modal" style="max-width:320px;">
+    <div class="modal-title" id="slotModalTitle">型を選択</div>
+    <div id="slotTypeList" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('slotModal')">キャンセル</button>
+      <button class="btn btn-ghost" style="color:var(--accent2);" onclick="clearSlot()">🗑 クリア</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+const STORAGE_KEY = 'postflow_v1';
+let state = {
+  types: [
+    { id: 't1', name: '共感系', color: '#7c6dfa', template: '✅ [気づき]\n\nこれって〇〇な方あるあるじゃないですか？\n\n実は私も〜\n\n→ だから今日は〇〇をシェアします！' },
+    { id: 't2', name: '実績系', color: '#fa6d9a', template: '📊 [実績報告]\n\n先月の結果が出ました。\n\n▶ フォロワー: 〇〇→〇〇\n▶ 収益: 〇〇円\n\nやったこと3つ👇' },
+    { id: 't3', name: 'ノウハウ系', color: '#6dfac2', template: '💡 [タイトル]\n\n〇〇で悩んでいる方へ\n\n✅ ポイント①\n✅ ポイント②\n✅ ポイント③\n\nこれだけで変わります。' },
+    { id: 't4', name: 'CTA系', color: '#fac06d', template: '🎁 [お知らせ]\n\nnoteに〇〇を書きました！\n\n・〇〇がわかる\n・〇〇できるようになる\n\nプロフのリンクからどうぞ👇' },
+    { id: 't5', name: 'ストーリー系', color: '#6dbbfa', template: '📖 [タイトル]\n\n〇年前の私は〇〇でした。\n\nそこから〇〇して…\n\n今では〇〇に。\n\nきっかけは一つの気づきでした👇' },
+  ],
+  posts: [],   // { id, date(YYYY-MM-DD), typeId, text, done }
+  routine: {}, // { 'mon': ['t1','t3'], 'tue': ['t2'], ... }
+  selectedDate: todayStr(),
+};
+
+function todayStr() {
+  return new Date().toISOString().slice(0,10);
+}
+function loadState() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) state = { ...state, ...JSON.parse(s) };
+  } catch(e) {}
+}
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+// ════════════════════════════════════════════
+//  COLORS
+// ════════════════════════════════════════════
+const COLORS = ['#7c6dfa','#fa6d9a','#6dfac2','#fac06d','#6dbbfa','#fa9d6d','#c06dfa','#d4fa6d'];
+let selectedColor = COLORS[0];
+function renderColorPicker() {
+  const cp = document.getElementById('colorPicker');
+  cp.innerHTML = COLORS.map(c=>`
+    <div class="color-swatch ${c===selectedColor?'selected':''}"
+      style="background:${c}"
+      onclick="selectColor('${c}',this)">
+    </div>`).join('');
+}
+function selectColor(c, el) {
+  selectedColor = c;
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ════════════════════════════════════════════
+//  VIEW
+// ════════════════════════════════════════════
+let currentView = 'day';
+function setView(v) {
+  document.querySelectorAll('.nav-btn').forEach((b,i)=> b.classList.toggle('active', i===(v==='schedule'?0:1)));
+  currentView = v==='routine' ? 'routine' : currentView;
+  if(v==='routine') openRoutineModal();
+}
+function setDateRange(r, el) {
+  currentView = r;
+  document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderAll();
+}
+
+// ════════════════════════════════════════════
+//  DATE STRIP
+// ════════════════════════════════════════════
+function renderDateStrip() {
+  const strip = document.getElementById('dateStrip');
+  const today = todayStr();
+  // Show 14 days centered around selected
+  const sel = new Date(state.selectedDate + 'T00:00:00');
+  const days = [];
+  for(let i=-3; i<=17; i++){
+    const d = new Date(sel);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
+  const DOW = ['日','月','火','水','木','金','土'];
+  strip.innerHTML = days.map(d=>{
+    const ds = d.toISOString().slice(0,10);
+    const posts = state.posts.filter(p=>p.date===ds);
+    const dots = state.types.slice(0,4).map(t=> {
+      const has = posts.some(p=>p.typeId===t.id);
+      return has ? `<div class="date-dot" style="background:${t.color}"></div>` : '';
+    }).join('');
+    return `<div class="date-cell ${ds===today?'today':''} ${ds===state.selectedDate?'selected':''}"
+      onclick="selectDate('${ds}')">
+      <div class="dow">${DOW[d.getDay()]}</div>
+      <div class="day">${d.getDate()}</div>
+      <div class="dot-row">${dots}</div>
+    </div>`;
+  }).join('');
+  // scroll selected into view
+  const sel_el = strip.querySelector('.selected');
+  if(sel_el) sel_el.scrollIntoView({block:'nearest',inline:'center'});
+}
+
+function selectDate(ds) {
+  state.selectedDate = ds;
+  saveState();
+  renderAll();
+}
+
+// ════════════════════════════════════════════
+//  CONTENT
+// ════════════════════════════════════════════
+function getPosts(date) {
+  return state.posts.filter(p=> p.date === date).sort((a,b)=> a.order - b.order);
+}
+function getPostsForWeek(startDate) {
+  const dates = [];
+  const d = new Date(startDate + 'T00:00:00');
+  for(let i=0;i<7;i++){
+    dates.push(new Date(d));
+    d.setDate(d.getDate()+1);
+  }
+  return dates.map(dd=>dd.toISOString().slice(0,10));
+}
+
+function renderContent() {
+  const area = document.getElementById('contentArea');
+  const today = todayStr();
+  
+  let dates = [];
+  if(currentView === 'week') {
+    // 今週の月曜から
+    const sel = new Date(state.selectedDate + 'T00:00:00');
+    const day = sel.getDay();
+    const mon = new Date(sel); mon.setDate(sel.getDate() - (day===0?6:day-1));
+    dates = getPostsForWeek(mon.toISOString().slice(0,10));
+  } else {
+    dates = [state.selectedDate];
+  }
+
+  const DOW_LABELS = ['日','月','火','水','木','金','土'];
+  let html = '';
+  let totalPosts = 0, donePosts = 0, totalChars = 0;
+
+  for(const ds of dates) {
+    const posts = getPosts(ds);
+    totalPosts += posts.length;
+    donePosts += posts.filter(p=>p.done).length;
+    posts.forEach(p=>totalChars += (p.text||'').length);
+
+    if(currentView === 'week') {
+      const d = new Date(ds+'T00:00:00');
+      const isToday = ds === today;
+      html += `<div style="font-size:12px;font-weight:700;color:${isToday?'var(--accent)':'var(--text3)'};padding:4px 0 8px;display:flex;align-items:center;gap:8px;">
+        <span>${DOW_LABELS[d.getDay()]}・${d.getMonth()+1}/${d.getDate()}${isToday?' 🔵':''}</span>
+        <span style="font-size:11px;font-weight:400;color:var(--text3);">${posts.length}件</span>
+      </div>`;
+    }
+
+    if(posts.length === 0) {
+      if(currentView === 'day') {
+        html += `<div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-title">投稿がありません</div>
+          <div class="empty-sub">「＋ 投稿を追加」または「ルーティンを適用」<br>で投稿を作成しましょう</div>
+        </div>`;
+      } else {
+        html += `<div style="color:var(--text3);font-size:12px;padding:0 0 16px;font-style:italic;">投稿なし</div>`;
+      }
+    } else {
+      posts.forEach((post, idx) => {
+        const type = state.types.find(t=>t.id===post.typeId);
+        const color = type?.color || '#666';
+        const name = type?.name || '未設定';
+        const chars = (post.text||'').length;
+        const isEditing = post._editing;
+        html += `<div class="post-card" id="card-${post.id}" style="border-left-color:${color};${currentView==='week'?'margin-bottom:8px;':''}">
+          <div class="card-header">
+            <div class="card-type-badge" style="background:${color}22;color:${color};">
+              <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block;"></span>
+              ${name}
+            </div>
+            <div class="card-order">#${idx+1}</div>
+            <div class="card-actions-mini">
+              <button class="icon-btn" title="編集" onclick="toggleEdit('${post.id}')">✏️</button>
+              <button class="icon-btn" title="削除" onclick="deletePost('${post.id}')">🗑</button>
+            </div>
+          </div>
+          <div class="card-body" id="body-${post.id}">
+            ${isEditing
+              ? `<textarea class="edit-textarea" id="ta-${post.id}" onchange="updatePostText('${post.id}',this.value)">${(post.text||'').replace(/</g,'&lt;')}</textarea>`
+              : post.text
+                ? `<div class="post-text">${escHtml(post.text)}</div>`
+                : `<div class="post-text-empty">（投稿文が未入力です）</div>`
+            }
+          </div>
+          <div class="card-footer">
+            <span class="char-count">${chars}文字</span>
+            <div class="footer-spacer"></div>
+            ${isEditing
+              ? `<button class="btn-edit-post" style="color:var(--accent3);" onclick="saveEdit('${post.id}')">✅ 保存</button>`
+              : `<button class="btn-edit-post" onclick="toggleEdit('${post.id}')">✏️ 編集</button>`
+            }
+            <button class="btn-done ${post.done?'done':''}" onclick="toggleDone('${post.id}')">
+              ${post.done ? '✅ 投稿済' : '投稿完了'}
+            </button>
+          </div>
+        </div>`;
+      });
+    }
+    if(currentView==='week') html += `<div style="height:8px;"></div>`;
+  }
+
+  area.innerHTML = html || `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">投稿がありません</div></div>`;
+
+  // stats
+  renderStats(totalPosts, donePosts, totalChars);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ════════════════════════════════════════════
+//  STATS
+// ════════════════════════════════════════════
+function renderStats(total, done, chars) {
+  const bar = document.getElementById('statsBar');
+  bar.innerHTML = [
+    { num: total, label: currentView==='week'?'週の投稿':'今日の投稿' },
+    { num: done, label: '投稿済み', color: done>0?'var(--accent3)':undefined },
+    { num: total-done, label: '残り', color: total-done>0?'var(--accent2)':undefined },
+    { num: chars, label: '総文字数' },
+  ].map(s=>`<div class="stat-item">
+    <div class="stat-num" ${s.color?`style="color:${s.color}"`:''}>${s.num}</div>
+    <div class="stat-label">${s.label}</div>
+  </div>`).join('');
+}
+
+// ════════════════════════════════════════════
+//  TYPES SIDEBAR
+// ════════════════════════════════════════════
+function renderTypesList() {
+  const list = document.getElementById('typesList');
+  list.innerHTML = state.types.map(t => {
+    const count = state.posts.filter(p=>p.typeId===t.id).length;
+    return `<div class="type-chip" onclick="">
+      <div class="type-dot" style="background:${t.color}"></div>
+      <div class="type-chip-name">${t.name}</div>
+      <div class="type-chip-count">${count}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════
+//  HEADER
+// ════════════════════════════════════════════
+function renderHeader() {
+  const today = todayStr();
+  const d = new Date(state.selectedDate + 'T00:00:00');
+  const DOW = ['日','月','火','水','木','金','土'];
+  document.getElementById('headerDate').textContent =
+    currentView === 'week' ? `(週間)` : `${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）`;
+  document.getElementById('headerSub').textContent =
+    state.selectedDate === today ? '本日' : '';
+}
+
+// ════════════════════════════════════════════
+//  POST ACTIONS
+// ════════════════════════════════════════════
+function toggleEdit(id) {
+  const post = state.posts.find(p=>p.id===id);
+  if(!post) return;
+  post._editing = !post._editing;
+  renderContent();
+  if(post._editing) {
+    const ta = document.getElementById('ta-'+id);
+    if(ta) { ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); }
+  }
+}
+function updatePostText(id, val) {
+  const post = state.posts.find(p=>p.id===id);
+  if(post) post._text_draft = val;
+}
+function saveEdit(id) {
+  const post = state.posts.find(p=>p.id===id);
+  if(!post) return;
+  const ta = document.getElementById('ta-'+id);
+  if(ta) post.text = ta.value;
+  post._editing = false;
+  saveState();
+  renderAll();
+}
+function toggleDone(id) {
+  const post = state.posts.find(p=>p.id===id);
+  if(post) { post.done = !post.done; saveState(); renderContent(); renderTypesList(); }
+}
+function deletePost(id) {
+  if(!confirm('この投稿を削除しますか？')) return;
+  state.posts = state.posts.filter(p=>p.id!==id);
+  saveState();
+  renderAll();
+}
+
+// ════════════════════════════════════════════
+//  ADD TYPE MODAL
+// ════════════════════════════════════════════
+function openAddTypeModal() {
+  selectedColor = COLORS[state.types.length % COLORS.length];
+  renderColorPicker();
+  document.getElementById('typeName').value = '';
+  document.getElementById('typeTemplate').value = '';
+  openModal('typeModal');
+}
+function saveType() {
+  const name = document.getElementById('typeName').value.trim();
+  if(!name) { alert('型の名前を入力してください'); return; }
+  state.types.push({ id: 't'+Date.now(), name, color: selectedColor, template: document.getElementById('typeTemplate').value });
+  saveState();
+  closeModal('typeModal');
+  renderAll();
+}
+
+// ════════════════════════════════════════════
+//  ADD POST MODAL
+// ════════════════════════════════════════════
+function openAddPostModal() {
+  document.getElementById('postDate').value = state.selectedDate;
+  const sel = document.getElementById('postType');
+  sel.innerHTML = state.types.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  sel.addEventListener('change', () => {
+    const t = state.types.find(tt=>tt.id===sel.value);
+    if(t && t.template && !document.getElementById('postText').value)
+      document.getElementById('postText').value = t.template;
+  }, {once:false});
+  // Set template on first open
+  const firstType = state.types[0];
+  if(firstType && firstType.template) document.getElementById('postText').value = firstType.template;
+  openModal('postModal');
+}
+function savePost() {
+  const date = document.getElementById('postDate').value;
+  const typeId = document.getElementById('postType').value;
+  const text = document.getElementById('postText').value;
+  if(!date) { alert('日付を選択してください'); return; }
+  const existing = state.posts.filter(p=>p.date===date);
+  state.posts.push({ id: 'p'+Date.now(), date, typeId, text, done: false, order: existing.length });
+  saveState();
+  closeModal('postModal');
+  document.getElementById('postText').value = '';
+  renderAll();
+}
+
+// ════════════════════════════════════════════
+//  ROUTINE MODAL
+// ════════════════════════════════════════════
+const DOW_KEYS = ['mon','tue','wed','thu','fri','sat','sun'];
+const DOW_LABELS_FULL = ['月','火','水','木','金','土','日'];
+let editingSlot = null; // {dayKey, slotIndex}
+
+function openRoutineModal() {
+  renderRoutineGrid();
+  openModal('routineModal');
+}
+function renderRoutineGrid() {
+  const grid = document.getElementById('routineGrid');
+  // Max slots across all days
+  const maxSlots = Math.max(2, ...DOW_KEYS.map(k=>(state.routine[k]||[]).length + 1));
+
+  let html = `<div class="routine-grid" style="grid-template-columns:repeat(7,1fr);">`;
+  // Labels
+  html += DOW_LABELS_FULL.map(l=>`<div class="routine-day-label">${l}</div>`).join('');
+  // Slots
+  for(let si=0; si<maxSlots; si++) {
+    html += DOW_KEYS.map(dk => {
+      const slots = state.routine[dk] || [];
+      const tid = slots[si];
+      const type = tid ? state.types.find(t=>t.id===tid) : null;
+      return `<div class="routine-slot ${type?'filled':''}"
+        style="${type?`background:${type.color}22;border-color:${type.color}66;color:${type.color};`:''}"
+        onclick="openSlotPicker('${dk}',${si})"
+        title="${type?type.name:'タップして型を設定'}">
+        ${type ? type.name.slice(0,4) : '＋'}
+      </div>`;
+    }).join('');
+  }
+  html += `</div>`;
+  grid.innerHTML = html;
+}
+
+function openSlotPicker(dayKey, slotIndex) {
+  editingSlot = { dayKey, slotIndex };
+  const DOW_JP = {mon:'月',tue:'火',wed:'水',thu:'木',fri:'金',sat:'土',sun:'日'};
+  document.getElementById('slotModalTitle').textContent = `${DOW_JP[dayKey]}曜日 スロット${slotIndex+1}`;
+  const list = document.getElementById('slotTypeList');
+  list.innerHTML = state.types.map(t=>`
+    <div onclick="setSlotType('${t.id}')" style="
+      display:flex;align-items:center;gap:10px;padding:10px 12px;
+      border-radius:8px;border:1px solid ${t.color}44;background:${t.color}15;
+      cursor:pointer;transition:all 0.15s;color:${t.color};font-weight:500;font-size:13px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:${t.color};flex-shrink:0;"></div>
+      ${t.name}
+    </div>`).join('');
+  openModal('slotModal');
+}
+function setSlotType(typeId) {
+  if(!editingSlot) return;
+  const { dayKey, slotIndex } = editingSlot;
+  if(!state.routine[dayKey]) state.routine[dayKey] = [];
+  state.routine[dayKey][slotIndex] = typeId;
+  saveState();
+  closeModal('slotModal');
+  renderRoutineGrid();
+}
+function clearSlot() {
+  if(!editingSlot) return;
+  const { dayKey, slotIndex } = editingSlot;
+  if(state.routine[dayKey]) {
+    state.routine[dayKey].splice(slotIndex, 1);
+    if(state.routine[dayKey].length === 0) delete state.routine[dayKey];
+    saveState();
+  }
+  closeModal('slotModal');
+  renderRoutineGrid();
+}
+
+function applyRoutine() {
+  // Apply routine for selected week
+  const sel = new Date(state.selectedDate + 'T00:00:00');
+  const day = sel.getDay();
+  const mon = new Date(sel); mon.setDate(sel.getDate() - (day===0?6:day-1));
+
+  let added = 0;
+  DOW_KEYS.forEach((dk, i) => {
+    const slots = state.routine[dk] || [];
+    if(slots.length === 0) return;
+    const d = new Date(mon); d.setDate(mon.getDate() + i);
+    const ds = d.toISOString().slice(0,10);
+    slots.forEach(typeId => {
+      if(!typeId) return;
+      const type = state.types.find(t=>t.id===typeId);
+      const existing = state.posts.filter(p=>p.date===ds);
+      state.posts.push({
+        id: 'p'+Date.now()+Math.random(),
+        date: ds,
+        typeId,
+        text: type?.template || '',
+        done: false,
+        order: existing.length
+      });
+      added++;
+    });
+  });
+
+  saveState();
+  closeModal('routineModal');
+  alert(`✅ ${added}件の投稿をスケジュールに追加しました！`);
+  renderAll();
+}
+
+// ════════════════════════════════════════════
+//  MODAL HELPERS
+// ════════════════════════════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => {
+    if(e.target === el) el.classList.remove('open');
+  });
+});
+
+// postType change handler
+document.getElementById('postType').addEventListener('change', function() {
+  const t = state.types.find(tt=>tt.id===this.value);
+  const ta = document.getElementById('postText');
+  if(t && t.template && ta.value === '') ta.value = t.template;
+  else if(t && t.template) {
+    if(confirm('テンプレートを適用しますか？')) ta.value = t.template;
+  }
+});
+
+// ════════════════════════════════════════════
+//  RENDER ALL
+// ════════════════════════════════════════════
+function renderAll() {
+  renderHeader();
+  renderDateStrip();
+  renderTypesList();
+  renderContent();
+}
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+loadState();
+// If no posts, add sample for today
+if(state.posts.length === 0) {
+  const today = todayStr();
+  state.posts = [
+    { id: 'demo1', date: today, typeId: 't1', text: '✅ 気づき\n\n「副業で稼ぐ」って難しそうに見えて\n実は仕組みさえ整えれば意外とシンプル。\n\n私が最初に変えたのは\n投稿の「型」を決めたことでした。\n\n→ 型があると迷わず書ける、継続できる、信頼が積み上がる。\n\nやることが明確になると行動が変わります🔥', done: false, order: 0 },
+    { id: 'demo2', date: today, typeId: 't3', text: '💡 Threadsで読まれる投稿3つのコツ\n\n①最初の一文で「誰向けか」を明示する\n②改行を多めに使って読みやすくする\n③最後に次のアクションを促す\n\n今日からすぐ使えます。', done: false, order: 1 },
+  ];
+  saveState();
+}
+renderAll();
+</script>
+</body>
+</html>
